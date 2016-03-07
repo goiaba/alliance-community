@@ -26,6 +26,6 @@ def index(request):
             form = ChooseTeamForm(request)
             context = RequestContext(request, {'teams': teams,
                                                'form': form})
-            return render(request, 'core/index.html', context)
+            return render(request, 'backlog/backlog_list.html', context)
 
-    return render(request, 'core/index.html')
+    return render(request, 'backlog/backlog_list.html')
