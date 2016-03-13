@@ -66,6 +66,8 @@ docs/_build/
 
 # Ignores your local settings
 */local_settings.py
+alliance/config/local_settings.py
+logs/*
 
 .vagrant/
 .vim/

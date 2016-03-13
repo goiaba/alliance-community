@@ -1,4 +1,4 @@
-body { 
+body {
     font-family:'Oxygen',sans-serif;
     font-size:0.8em;
     color:#333333;
@@ -41,12 +41,17 @@ th, td {
 }
 
 #backlog-table {
-    margin-left:auto;
-    margin-right:auto;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-#backlog-table th { 
-    padding:7px 15px; 
+#createStory {
+    width: 800px;
+    margin: 0 50px;
+}
+
+#backlog-table th {
+    padding:7px 15px;
     text-align:center;
 }
 #backlog-table td {
@@ -54,7 +59,7 @@ th, td {
 }
 
 #backlog-table tr.odd td {
-    cursor:pointer; 
+    cursor:pointer;
 }
 
 #backlog-table tr:not(.odd) td {

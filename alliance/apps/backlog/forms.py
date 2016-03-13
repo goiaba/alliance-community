@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.forms.models import BaseInlineFormSet
 from django.forms.models import inlineformset_factory
 from .util import queued_status_id
-from apps.shared.models import (Backlog, Estimate, Event,
-                                         AcceptanceCriteria)
+from apps.shared.models import (AcceptanceCriteria, Backlog, Estimate, Event,
+                                Project)
 
 
 class EstimateForm(forms.ModelForm):
@@ -125,6 +125,41 @@ class CustomAcceptanceCriteriaFormSet(BaseInlineFormSet):
         if is_backlog_queued(self.instance):
             raise forms.ValidationError("A queued backlog cannot be edited.",
                                         code='not_editable')
+
+class BacklogCreateForm(forms.ModelForm):
+    '''
+    This creates a new story in the backlog.
+    '''
+    id = forms.CharField(widget=forms.HiddenInput())
+    priority = forms.ChoiceField(choices=((x, str(x)) for x in range(1, 10)), widget=forms.Select,
+                                 required=True, label='Priority')
+    projects = forms.ChoiceField(choices=Project.objects \
+                                                .values_list('id', 'name') \
+                                                .distinct(),
+                                 widget=forms.Select, required=True,
+                                 label='Project')
+    module = forms.CharField(max_length=Backlog._meta.get_field('module') \
+                                                     .max_length,
+                            label='Module')
+    story_title = forms.CharField(max_length=Backlog._meta \
+                                                    .get_field('story_title')
+                                                    .max_length,
+                                  label='Story Title')
+
+
+    def save(self, commit=True):
+        instance = super(BacklogUpdateForm, self).save(commit=False)
+
+        if commit:
+            instance.save(update_fields=['priority', 'projects', 'module',
+                                         'story_title'])
+        return instance
+
+
+    class Meta:
+        model = Backlog
+        fields = ('id', 'priority', 'module', 'story_title')
+
 
 AcceptanceCriteriaFormSet = inlineformset_factory(
     Backlog, AcceptanceCriteria, extra=1, form=AcceptanceCriteriaForm,

@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.timezone import now
 from datetime import datetime
 from . import Project, Event, Status, Team
 
@@ -16,7 +17,7 @@ class Backlog(models.Model):
     team = models.ForeignKey(Team, db_column='team_id_fk', null=True, blank=True)
     github_number = models.CharField(max_length=5, null=True, blank=True)
     github_repo = models.CharField(max_length=50, null=True, blank=True)
-    create_dttm = models.DateTimeField(default=datetime.now, blank=False)
+    create_dttm = models.DateTimeField(default=now, blank=False)
     update_dttm = models.DateTimeField(null=True, blank=True)
 
     def __unicode__(self):

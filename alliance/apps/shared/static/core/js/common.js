@@ -14,26 +14,30 @@ function getCookie(name) {
     return cookieValue;
 }
 
-function redirectToLogin(loginUrl, next) {
-    if (next != null)
-        loginUrl = loginUrl + "/?next=" + next;
-    window.location.replace(loginUrl);
+function cleanUrl(url) {
+    return url && url.endsWith('/') ? url.substring(0, url.length - 1) : url;
 }
+
+function redirectToLogin(loginUrl, next) {
+    var newUrl = next ? cleanUrl(loginUrl) + '/?next=' + next : loginUrl;
+    window.location.replace(newUrl);
+}
+
 
 function showMessage(message) {
     var div = document.querySelector("#messages");
     div.textContent = message;
     $("#messages").show();
-    setTimeout(function() { 
-        div.textContent = ''; 
+    setTimeout(function() {
+        div.textContent = '';
     }, 5000);
 }
 
 function showErrors(errors) {
     var string = "";
     er = JSON.parse(errors);
-    for (field in er) { 
-        for (error in er[field]) { 
+    for (field in er) {
+        for (error in er[field]) {
             fieldObj = er[field];
             for (el in fieldObj) {
                 if (field != "__all__")

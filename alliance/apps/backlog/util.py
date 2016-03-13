@@ -21,7 +21,7 @@ def project_id_list(team_id):
 
 
 def priority_list():
-    return ['0', '1', '2']
+    return [str(x) for x in range(1, 10)]
 
 
 def open_status_id():

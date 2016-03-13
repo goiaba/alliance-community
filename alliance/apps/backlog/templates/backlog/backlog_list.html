@@ -53,6 +53,10 @@
             });
 
             $("#messages").hide();
+
+            $('#createStoryButton').click(function(e) {
+                e.preventDefault();
+            });
         });
 
         setInterval(function() {checkUpdates();}, 30000);
@@ -172,6 +176,29 @@
                 }
             });
         }
+
+    function createStory(form) {
+        var $form = $(form);
+        var data = $form.serializeArray();
+        data.push({ name: 'action-create', value: true });
+
+        var createPromise = $.post("{% url 'backlogs' %}", $.param(data));
+
+        createPromise.done(function(data) {
+            if (data.success) {
+                window.location = window.location;
+                return;
+            }
+
+            showErrors(data.errors);
+        });
+
+        createPromise.fail(function(xhr) {
+            if (xhr.status === '401') {
+                redirectToLogin("{% url 'login' %}", $(location).attr('pathname'));
+            }
+        });
+    }
     </script>
 {%endblock%}
 
@@ -247,5 +274,16 @@
         </table>
     {% else %}
         <p>There are no open User Stories to show for this backlog.</p>
+    {% endif %}
+
+    {% if create_form %}
+        <div id="createStory">
+            <h3>Create a story</h3>
+            <form method="post" action="">
+                {% csrf_token %}
+                {{ create_form }}
+                <button id="createStoryButton" class="button-right-al" name="create_form" value="save" onClick="createStory(this.form);">Create</button>
+            </form>
+        </div>
     {% endif %}
 {% endblock %}

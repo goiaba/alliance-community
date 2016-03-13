@@ -8,7 +8,9 @@ from django.utils.timezone import localtime
 from ..github.export_to import export_to_github
 from ..util import (open_status_id, selected_status_id, queued_status_id,
                     retrieve_backlogs_by_status_project_and_priority)
-from apps.shared.models import Backlog, Estimate, Event, Status, Team
+from ...backlog.forms import (AcceptanceCriteriaFormSet, EstimateForm,
+                              BacklogUpdateForm, BacklogCreateForm)
+from apps.shared.models import Backlog, Estimate, Event, Project, Status, Team
 from core.lib.shortcuts import create_json_message_object
 from apps.shared.views.mixins.requiresigninajax import RequireSignIn
 from core.lib.views_helper import get_object_or_none
@@ -23,34 +25,10 @@ class BacklogView(RequireSignIn, View):
         if team_id is None:
             return redirect(reverse('index'))
         # From here now we have all we need to list the backlogs
-        backlogs = retrieve_backlogs_by_status_project_and_priority(team_id)\
-            .order_by('project__name', 'priority', 'module', 'id')
-        backlog_tuple = []
-        from ...backlog.forms import AcceptanceCriteriaFormSet, EstimateForm, BacklogUpdateForm
-        for backlog in backlogs:
-            read_only = backlog.status.id == queued_status_id()
-
-            estimate = get_object_or_none(Estimate, team_id=team_id, backlog_id=backlog.id)
-            if not estimate:
-                estimate = Estimate(team_id=team_id, backlog_id=backlog.id)
-
-            # Creates the backlog form to edit data like story descr, skills,
-            # notes, etc
-            form = BacklogUpdateForm(read_only=read_only, instance=backlog,
-                                     prefix='backlog')
-            # Creates the estimate form to edit the estimate time of the
-            # specific backlog
-            form_estimate = EstimateForm(instance=estimate, prefix='estimate')
-            # Creates a set of forms that represents each acceptance
-            # criteria linked to the specific backlog
-            prefix = 'acceptance-criteria-%d' % backlog.id
-            formset = AcceptanceCriteriaFormSet(instance=backlog,
-                                                prefix=prefix)
-
-            # Apeend all these information to be sent in the context
-            backlog_tuple.append((backlog, form_estimate, form, formset),)
-
-        context = RequestContext(request, {'backlogs': backlog_tuple, })
+        backlog_tuple = self.get_backlogs_for_index(team_id)
+        create_form = BacklogCreateForm()
+        context = RequestContext(request, {'backlogs': backlog_tuple,
+            'create_form': create_form})
         return render(request, 'backlog/backlog_list.html', context)
 
     def post(self, request):
@@ -60,16 +38,36 @@ class BacklogView(RequireSignIn, View):
         if team_id is None:
             return redirect('index')
 
-        results = {'success': False}
+        results = { 'success': False }
 
         if 'action-update-estimate' in request.POST:
             self.update_estimate(request, results, team_id)
         elif 'action-save' in request.POST:
             self.update_backlog_and_acc_cri(request, results)
-        elif 'action-select-sprint':
+        elif 'action-create' in request.POST:
+            self.create_story(request, results)
+        elif 'action-select-sprint' in request.POST:
             self.select_sprint(request, results)
 
         return JsonResponse(results)
+
+    def create_story(self, request, results):
+        post = request.POST
+
+        backlog = Backlog()
+        backlog.project = get_object_or_none(Project, id=post.get('projects'))
+        backlog.priority = post.get('priority', 3)
+        backlog.module = post.get('module', '')
+        backlog.status = get_object_or_none(Status, category='backlog',
+                                            name='open')
+        backlog.story_title = post.get('story_title', '')
+
+        backlog.save()
+        backlog.refresh_from_db()
+
+        results['success'] = True
+        results['result'] = [backlog.id]
+
 
     def update_estimate(self, request, results, team_id):
         from ...backlog.forms import EstimateForm
@@ -143,8 +141,6 @@ class BacklogView(RequireSignIn, View):
                     str(e), code="exception")
 
     def update_backlog_and_acc_cri(self, request, results):
-        from ...backlog.forms import AcceptanceCriteriaFormSet, BacklogUpdateForm
-
         backlog_id = request.POST.get('backlog-id')
         backlog = get_object_or_none(Backlog, id=backlog_id)
         form = BacklogUpdateForm(request.POST,
@@ -171,3 +167,33 @@ class BacklogView(RequireSignIn, View):
                 results['errors'] = formset.non_form_errors()
         else:
             results['errors'] = form.errors.as_json()
+
+
+    def get_backlogs_for_index(self, team_id=None):
+        backlogs = retrieve_backlogs_by_status_project_and_priority(team_id)\
+            .order_by('project__name', 'priority', 'module', 'id')
+        backlog_tuple = []
+        for backlog in backlogs:
+            read_only = backlog.status.id == queued_status_id()
+
+            estimate = get_object_or_none(Estimate, team_id=team_id, backlog_id=backlog.id)
+            if not estimate:
+                estimate = Estimate(team_id=team_id, backlog_id=backlog.id)
+
+            # Creates the backlog form to edit data like story descr, skills,
+            # notes, etc
+            form = BacklogUpdateForm(read_only=read_only, instance=backlog,
+                                     prefix='backlog')
+            # Creates the estimate form to edit the estimate time of the
+            # specific backlog
+            form_estimate = EstimateForm(instance=estimate, prefix='estimate')
+            # Creates a set of forms that represents each acceptance
+            # criteria linked to the specific backlog
+            prefix = 'acceptance-criteria-%d' % backlog.id
+            formset = AcceptanceCriteriaFormSet(instance=backlog,
+                                                prefix=prefix)
+
+            # Apeend all these information to be sent in the context
+            backlog_tuple.append((backlog, form_estimate, form, formset),)
+
+        return backlog_tuple
